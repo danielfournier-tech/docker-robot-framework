@@ -1,0 +1,17 @@
+*~
+
+.git/
+test/
+
+.gitignore
+.travis.yml
+LICENSE
+README.md
+
+# Eclipse
+.settings/
+.project
+
+# IntelliJ
+.idea/
+*.iml
