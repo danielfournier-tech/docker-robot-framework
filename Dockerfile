@@ -1,6 +1,6 @@
-FROM python:3.9.0-alpine3.12
+FROM fedora:36
 
-MAINTAINER Daniel Fournier <ppodgorsek@users.noreply.github.com>
+MAINTAINER Paul Podgorsek <ppodgorsek@users.noreply.github.com>
 LABEL description Robot Framework in Docker.
 
 # Set the reports directory environment variable
@@ -29,24 +29,24 @@ ENV ROBOT_UID 1000
 ENV ROBOT_GID 1000
 
 # Dependency versions
-ENV ALPINE_GLIBC 2.31-r0
-ENV AWS_CLI_VERSION 1.20.6
+ENV ALPINE_GLIBC 2.35-r0
+ENV AWS_CLI_VERSION 1.22.87
 ENV AXE_SELENIUM_LIBRARY_VERSION 2.1.6
-ENV BROWSER_LIBRARY_VERSION 6.0.0
-ENV CHROMIUM_VERSION 86.0
+ENV BROWSER_LIBRARY_VERSION 12.2.0
+ENV CHROMIUM_VERSION 99.0
 ENV DATABASE_LIBRARY_VERSION 1.2.4
-ENV DATADRIVER_VERSION 1.4.1
+ENV DATADRIVER_VERSION 1.6.0
 ENV DATETIMETZ_VERSION 1.0.6
 ENV FAKER_VERSION 5.0.0
-ENV FIREFOX_VERSION 78
+ENV FIREFOX_VERSION 98.0
 ENV FTP_LIBRARY_VERSION 1.9
-ENV GECKO_DRIVER_VERSION v0.26.0
-ENV IMAP_LIBRARY_VERSION 0.4.0
-ENV PABOT_VERSION 2.0.1
-ENV REQUESTS_VERSION 0.9.1
-ENV ROBOT_FRAMEWORK_VERSION 5.0.1
-ENV SELENIUM_LIBRARY_VERSION 5.1.3
-ENV SSH_LIBRARY_VERSION 3.7.0
+ENV GECKO_DRIVER_VERSION v0.30.0
+ENV IMAP_LIBRARY_VERSION 0.4.2
+ENV PABOT_VERSION 2.5.2
+ENV REQUESTS_VERSION 0.9.2
+ENV ROBOT_FRAMEWORK_VERSION 5.0
+ENV SELENIUM_LIBRARY_VERSION 6.0.0
+ENV SSH_LIBRARY_VERSION 3.8.0
 ENV XVFB_VERSION 1.20
 
 # By default, no reports are uploaded to AWS S3
@@ -58,83 +58,62 @@ COPY bin/chromium-browser.sh /opt/robotframework/bin/chromium-browser
 COPY bin/run-tests-in-virtual-screen.sh /opt/robotframework/bin/
 
 # Install system dependencies
-RUN apk update \
-  && apk --no-cache upgrade \
-  && apk --no-cache --virtual .build-deps add \
-
-    # Install dependencies for cryptography due to https://github.com/pyca/cryptography/issues/5771
-    cargo \
-    rust \
-
-    # Continue with system dependencies
-    gcc \
-    g++ \
-    libffi-dev \
-    linux-headers \
-    make \
-    musl-dev \
-    openssl-dev \
-    which \
-    wget \
-  && apk --no-cache add \
-    "chromium~$CHROMIUM_VERSION" \
-    "chromium-chromedriver~$CHROMIUM_VERSION" \
-    "firefox-esr~$FIREFOX_VERSION" \
+RUN dnf upgrade -y --refresh \
+  && dnf install -y \
+    chromedriver-${CHROMIUM_VERSION}* \
+    chromium-${CHROMIUM_VERSION}* \
+    firefox-${FIREFOX_VERSION}* \
+    npm \
     nodejs \
-    nodejs-npm \
-    xauth \
+    python3-pip \
     tzdata \
-    "xvfb-run~$XVFB_VERSION" \
-  && mv /usr/lib/chromium/chrome /usr/lib/chromium/chrome-original \
-  && ln -sfv /opt/robotframework/bin/chromium-browser /usr/lib/chromium/chrome \
-# FIXME: above is a workaround, as the path is ignored
+    xorg-x11-server-Xvfb-${XVFB_VERSION}* \
+  && dnf clean all
 
-# Install Robot Framework, Selenium Library, FPDF
-  && pip3 install \
-    --no-cache-dir \
-    robotframework==$ROBOT_FRAMEWORK_VERSION \
-    robotframework-browser==$BROWSER_LIBRARY_VERSION \
-    robotframework-databaselibrary==$DATABASE_LIBRARY_VERSION \
-    robotframework-datadriver==$DATADRIVER_VERSION \
-    robotframework-datadriver[XLS] \
-    robotframework-datetime-tz==$DATETIMETZ_VERSION \
-    robotframework-faker==$FAKER_VERSION \
-    robotframework-ftplibrary==$FTP_LIBRARY_VERSION \
-    robotframework-imaplibrary2==$IMAP_LIBRARY_VERSION \
-    robotframework-pabot==$PABOT_VERSION \
-    robotframework-requests==$REQUESTS_VERSION \
-    robotframework-seleniumlibrary==$SELENIUM_LIBRARY_VERSION \
-    robotframework-sshlibrary==$SSH_LIBRARY_VERSION \
-    axe-selenium-python==$AXE_SELENIUM_LIBRARY_VERSION \
-    PyYAML \
-    fpdf \
-    mailslurp-client \
+# FIXME: below is a workaround, as the path is ignored
+RUN mv /usr/lib64/chromium-browser/chromium-browser /usr/lib64/chromium-browser/chromium-browser-original \
+  && ln -sfv /opt/robotframework/bin/chromium-browser /usr/lib64/chromium-browser/chromium-browser
 
-# Install awscli to be able to upload test reports to AWS S3
-    awscli==$AWS_CLI_VERSION \
+# Install Robot Framework and associated libraries
+RUN pip3 install \
+  --no-cache-dir \
+  robotframework==$ROBOT_FRAMEWORK_VERSION \
+  robotframework-browser==$BROWSER_LIBRARY_VERSION \
+  robotframework-databaselibrary==$DATABASE_LIBRARY_VERSION \
+  robotframework-datadriver==$DATADRIVER_VERSION \
+  robotframework-datadriver[XLS] \
+  robotframework-datetime-tz==$DATETIMETZ_VERSION \
+  robotframework-faker==$FAKER_VERSION \
+  robotframework-ftplibrary==$FTP_LIBRARY_VERSION \
+  robotframework-imaplibrary2==$IMAP_LIBRARY_VERSION \
+  robotframework-pabot==$PABOT_VERSION \
+  robotframework-requests==$REQUESTS_VERSION \
+  robotframework-seleniumlibrary==$SELENIUM_LIBRARY_VERSION \
+  robotframework-sshlibrary==$SSH_LIBRARY_VERSION \
+  axe-selenium-python==$AXE_SELENIUM_LIBRARY_VERSION \
+  PyYAML \
+  # Install awscli to be able to upload test reports to AWS S3
+  awscli==$AWS_CLI_VERSION
 
-# Install the node dependencies for the Browser library
-  && rfbrowser init \
+# Gecko drivers
+RUN dnf install -y \
+    wget \
 
-# Download the glibc package for Alpine Linux from its GitHub repository
-  && wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub \
-    && wget -q "https://github.com/sgerrand/alpine-pkg-glibc/releases/download/$ALPINE_GLIBC/glibc-$ALPINE_GLIBC.apk" \
-    && wget -q "https://github.com/sgerrand/alpine-pkg-glibc/releases/download/$ALPINE_GLIBC/glibc-bin-$ALPINE_GLIBC.apk" \
-    && apk add glibc-$ALPINE_GLIBC.apk \
-    && apk add glibc-bin-$ALPINE_GLIBC.apk \
-    && rm glibc-$ALPINE_GLIBC.apk \
-    && rm glibc-bin-$ALPINE_GLIBC.apk \
-    && rm /etc/apk/keys/sgerrand.rsa.pub \
-
-# Download Gecko drivers directly from the GitHub repository
+  # Download Gecko drivers directly from the GitHub repository
   && wget -q "https://github.com/mozilla/geckodriver/releases/download/$GECKO_DRIVER_VERSION/geckodriver-$GECKO_DRIVER_VERSION-linux64.tar.gz" \
-    && tar xzf geckodriver-$GECKO_DRIVER_VERSION-linux64.tar.gz \
-    && mkdir -p /opt/robotframework/drivers/ \
-    && mv geckodriver /opt/robotframework/drivers/geckodriver \
-    && rm geckodriver-$GECKO_DRIVER_VERSION-linux64.tar.gz \
+  && tar xzf geckodriver-$GECKO_DRIVER_VERSION-linux64.tar.gz \
+  && mkdir -p /opt/robotframework/drivers/ \
+  && mv geckodriver /opt/robotframework/drivers/geckodriver \
+  && rm geckodriver-$GECKO_DRIVER_VERSION-linux64.tar.gz \
 
-# Clean up buildtime dependencies
-  && apk del --no-cache --update-cache .build-deps
+  && dnf remove -y \
+    wget \
+  && dnf clean all
+
+# Install the Node dependencies for the Browser library
+# FIXME: Playright currently doesn't support relying on system browsers, which is why the `--skip-browsers` parameter cannot be used here.
+RUN rfbrowser init \
+  && ln -sf /usr/lib64/libstdc++.so.6 /usr/local/lib/python3.10/site-packages/Browser/wrapper/node_modules/playwright-core/.local-browsers/firefox-1316/firefox/libstdc++.so.6
 
 # Create the default report and work folders with the default user to avoid runtime issues
 # These folders are writeable by anyone, to ensure the user can be changed on the command line.
