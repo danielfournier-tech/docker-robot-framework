@@ -69,6 +69,7 @@ RUN dnf upgrade -y --refresh \
     python3-pip \
     tzdata \
     xorg-x11-server-Xvfb-${XVFB_VERSION}* \
+    dos2unix \
   && dnf clean all
 
 # FIXME: below is a workaround, as the path is ignored
@@ -139,5 +140,7 @@ USER ${ROBOT_UID}:${ROBOT_GID}
 # A dedicated work folder to allow for the creation of temporary files
 WORKDIR ${ROBOT_WORK_DIR}
 
+RUN echo $(ls -la /opt/robotframework/bin/)
+
 # Execute all robot tests
-CMD ["run-tests-in-virtual-screen.sh"]
+CMD ["bash", "run-tests-in-virtual-screen.sh"]
