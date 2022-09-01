@@ -93,6 +93,7 @@ RUN pip3 install \
   robotframework-seleniumlibrary==$SELENIUM_LIBRARY_VERSION \
   robotframework-sshlibrary==$SSH_LIBRARY_VERSION \
   axe-selenium-python==$AXE_SELENIUM_LIBRARY_VERSION \
+  mailslurp-client \
   PyYAML \
   # Install awscli to be able to upload test reports to AWS S3
   awscli==$AWS_CLI_VERSION
