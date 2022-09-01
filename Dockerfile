@@ -62,7 +62,8 @@ RUN dnf upgrade -y --refresh \
   && dnf install -y \
     chromedriver-${CHROMIUM_VERSION}* \
     chromium-${CHROMIUM_VERSION}* \
-    firefox-${FIREFOX_VERSION}* \
+    firefox \
+    #firefox-${FIREFOX_VERSION}*
     npm \
     nodejs \
     python3-pip \
